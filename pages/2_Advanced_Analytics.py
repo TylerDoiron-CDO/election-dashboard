@@ -10,7 +10,10 @@ import plotly.express as px
 @st.cache_data
 def load_data():
     df = pd.read_csv('data/Election_Data.csv', encoding='latin1')
-    df['Year'] = pd.to_datetime(df['Date']).dt.year
+    df.columns = df.columns.str.strip()  # Remove whitespace from column names
+    df['Year'] = pd.to_datetime(df['Date'], errors='coerce').dt.year
+    df = df.dropna(subset=['Year'])
+    df['Year'] = df['Year'].astype(int)
     return df
 
 df = load_data()
