@@ -81,46 +81,52 @@ st.caption("Showing 10 rows. Use filters to explore more.")
 st.divider()
 
 # ---------------------------------------
-# Winning Party by Region and Parliament
+# 🥇 Winning Party by Riding and Parliament
 # ---------------------------------------
-st.header("🥇 Winning Party by Region and Parliament")
+st.header("🥇 Winning Party by Riding and Parliament")
 
-# Only use elected candidates
+# Filter to elected candidates only
 winners = df_filtered[df_filtered['Result'].str.contains("Elected", na=False)]
 
-# Aggregate by Province and Parliament
+# Sum votes by Constituency within each Parliament & Province
 summary = (
-    winners.groupby(['Province_Territory', 'Parliament', 'Political_Affiliation'])['Votes']
+    winners.groupby(['Parliament', 'Province_Territory', 'Constituency', 'Political_Affiliation'])['Votes']
     .sum()
     .reset_index()
 )
 
-# Determine winners per group
-summary['Rank'] = summary.groupby(['Province_Territory', 'Parliament'])['Votes'].rank(ascending=False, method='first')
-winners_only = summary[summary['Rank'] == 1].drop('Rank', axis=1)
+# Rank within each riding
+summary['Rank'] = summary.groupby(['Parliament', 'Province_Territory', 'Constituency'])['Votes'] \
+                         .rank(ascending=False, method='first')
 
-# Calculate % of vote in each region/parliament
-total_votes_per_group = (
-    winners.groupby(['Province_Territory', 'Parliament'])['Votes']
+# Keep only top-ranked (winning) party per riding
+winners_only = summary[summary['Rank'] == 1].drop(columns='Rank')
+
+# Total votes per riding (regardless of party)
+total_votes = (
+    df_filtered.groupby(['Parliament', 'Province_Territory', 'Constituency'])['Votes']
     .sum()
     .reset_index()
     .rename(columns={'Votes': 'TotalVotes'})
 )
 
-winners_only = winners_only.merge(total_votes_per_group, on=['Province_Territory', 'Parliament'])
+# Merge to calculate vote share
+winners_only = winners_only.merge(total_votes, on=['Parliament', 'Province_Territory', 'Constituency'])
 winners_only['Vote Share (%)'] = (winners_only['Votes'] / winners_only['TotalVotes']) * 100
-winners_only = winners_only.drop('TotalVotes', axis=1)
 winners_only['Vote Share (%)'] = winners_only['Vote Share (%)'].round(2)
 
-# Display
-st.dataframe(winners_only.rename(columns={
+# Rename and reorder columns
+winners_only = winners_only.rename(columns={
     'Province_Territory': 'Province',
-    'Parliament': 'Parliament',
+    'Constituency': 'Constituency',
     'Political_Affiliation': 'Winning Party',
     'Votes': 'Votes Won'
-}), use_container_width=True)
+})
 
-st.divider()
+winners_only = winners_only[['Parliament', 'Province', 'Constituency', 'Winning Party', 'Votes Won', 'Vote Share (%)']]
+
+# Display
+st.dataframe(winners_only.sort_values(['Parliament', 'Province', 'Constituency']), use_container_width=True)
 
 # ---------------------------------------
 # Political Party Spectrum
