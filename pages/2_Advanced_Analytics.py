@@ -184,3 +184,4 @@ st.caption("All analyses above are filtered to the selected election type. Defau
 # Footer
 # -------------------------------
 st.caption("Advanced analytics powered by Plotly and Streamlit • Data Canada Votes © 2025")
+
