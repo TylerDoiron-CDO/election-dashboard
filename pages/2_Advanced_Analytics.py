@@ -3,176 +3,182 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import numpy as np
+import calendar
 
 # -------------------------------
-# Load and prepare data
+# Load data
 # -------------------------------
 @st.cache_data
 def load_data():
-    import pandas as pd
-
     df = pd.read_csv('data/Election_Data.csv', encoding='latin1')
     df.columns = df.columns.str.strip()
 
-    # Ensure Year, Month, Day are numeric
+    # Parse dates
     df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
     df['Month'] = pd.to_numeric(df['Month'], errors='coerce')
     df['Day'] = pd.to_numeric(df['Day'], errors='coerce')
+    df['Date'] = pd.to_datetime(dict(year=df['Year'], month=df['Month'], day=df['Day']), errors='coerce')
+    df['Weekday'] = df['Date'].dt.day_name()
 
-    # Create ParsedDate from components
-    df['ParsedDate'] = pd.to_datetime(
-        dict(year=df['Year'], month=df['Month'], day=df['Day']),
-        errors='coerce'
-    )
-
-    # Drop rows with invalid or missing dates
-    df = df.dropna(subset=['ParsedDate'])
-    df['Year'] = df['ParsedDate'].dt.year.astype(int)
-
+    # Filter out rows with missing key fields
+    df = df.dropna(subset=['Year', 'Province_Territory', 'Election_Type', 'Parliament', 'Constituency', 'Votes'])
+    df['Votes'] = pd.to_numeric(df['Votes'], errors='coerce').fillna(0).astype(int)
     return df
 
-    
 df = load_data()
 
 # -------------------------------
-# Page title & description
+# Page Configuration
 # -------------------------------
-st.title("📈 Advanced Analytics")
-st.caption("Explore trends, patterns, and key insights from Canada's federal election history.")
+st.title("📊 Advanced Electoral Analytics")
+st.caption("Deep-dive into Canada's federal election trends, party dynamics, and historical outcomes.")
 
-st.divider()
+# Filter for Election Type
+available_types = sorted(df['Election_Type'].dropna().unique())
+default_type = 'General' if 'General' in available_types else available_types[0]
+selected_type = st.selectbox("Filter by Election Type:", available_types, index=available_types.index(default_type))
 
-# -------------------------------
-# Optional Filter Panel
-# -------------------------------
-with st.expander("🔍 Filter Data"):
-    col1, col2, col3 = st.columns(3)
-
-    selected_provinces = col1.multiselect(
-        "Province/Territory",
-        options=sorted(df['Province_Territory'].dropna().unique()),
-        default=None
-    )
-
-    selected_parties = col2.multiselect(
-        "Political Affiliation",
-        options=sorted(df['Political_Affiliation'].dropna().unique()),
-        default=None
-    )
-
-    selected_genders = col3.multiselect(
-        "Candidate Gender",
-        options=sorted(df['Gender'].dropna().unique()),
-        default=None
-    )
-
-# Apply filters
-filtered_df = df.copy()
-if selected_provinces:
-    filtered_df = filtered_df[filtered_df['Province_Territory'].isin(selected_provinces)]
-if selected_parties:
-    filtered_df = filtered_df[filtered_df['Political_Affiliation'].isin(selected_parties)]
-if selected_genders:
-    filtered_df = filtered_df[filtered_df['Gender'].isin(selected_genders)]
+df = df[df['Election_Type'] == selected_type]
 
 # -------------------------------
-# 🕰️ Voting Trends Over Time
+# Turnout and Participation Over Time
 # -------------------------------
-st.header("🕰️ Voting Trends Over Time")
+st.header("📈 Turnout and Participation Over Time")
+turnout = df.groupby('Year').agg({
+    'Votes': 'sum',
+    'Constituency': 'nunique',
+    'Province_Territory': 'nunique'
+}).rename(columns={
+    'Votes': 'Total Votes',
+    'Constituency': 'Total Ridings',
+    'Province_Territory': 'Provinces Participating'
+}).reset_index()
 
-trend = filtered_df[filtered_df['Votes'] > 0].groupby('Year')['Votes'].sum().reset_index()
-if not trend.empty:
-    fig_trend = px.line(trend, x='Year', y='Votes', markers=True,
-                        title="Total Votes Recorded in Election Years")
-    st.plotly_chart(fig_trend, use_container_width=True)
-else:
-    st.info("No data available for the selected filters.")
-
-st.divider()
-
-# -------------------------------
-# 🏛️ Party Dominance Over Time
-# -------------------------------
-st.header("🏛️ Party Dominance Across Elections")
-
-party_wins = filtered_df[filtered_df['Result'].str.contains("Elected", na=False)]
-party_trend = party_wins.groupby(['Year', 'Political_Affiliation']).size().reset_index(name='Seats')
-
-if not party_trend.empty:
-    fig_party = px.area(party_trend, x='Year', y='Seats', color='Political_Affiliation',
-                        title="Seats Won by Political Party Over Time", groupnorm="percent")
-    st.plotly_chart(fig_party, use_container_width=True)
-else:
-    st.info("No elected candidate data available for selected filters.")
-
-st.divider()
+fig_turnout = px.line(turnout, x='Year', y='Total Votes', markers=True, title='Total Votes Cast Over Time')
+st.plotly_chart(fig_turnout, use_container_width=True)
 
 # -------------------------------
-# 👤 Gender Representation
+# Votes by Province Over Time
 # -------------------------------
-st.header("👤 Gender Representation Over Time")
-
-gender_trend = filtered_df.groupby(['Year', 'Gender']).size().reset_index(name='Count')
-if not gender_trend.empty:
-    fig_gender = px.area(gender_trend, x='Year', y='Count', color='Gender',
-                         title="Candidate Gender Distribution by Year")
-    st.plotly_chart(fig_gender, use_container_width=True)
-else:
-    st.info("No gender data available for selected filters.")
-
-st.divider()
+st.header("🗺️ Vote Totals by Province")
+prov_vote = df.groupby(['Year', 'Province_Territory'])['Votes'].sum().reset_index()
+fig_prov = px.line(prov_vote, x='Year', y='Votes', color='Province_Territory', title="Votes by Province")
+st.plotly_chart(fig_prov, use_container_width=True)
 
 # -------------------------------
-# 💼 Candidate Occupations
+# Vote Share by Party
 # -------------------------------
-st.header("💼 Most Common Candidate Occupations")
+st.header("🧮 Party Vote Share Over Time")
+party_share = df.groupby(['Year', 'Political_Affiliation'])['Votes'].sum().reset_index()
+total_by_year = party_share.groupby('Year')['Votes'].sum().reset_index().rename(columns={'Votes': 'YearTotal'})
+party_share = party_share.merge(total_by_year, on='Year')
+party_share['Vote Share %'] = (party_share['Votes'] / party_share['YearTotal']) * 100
 
-occupation_counts = filtered_df['Occupation'].dropna().value_counts().reset_index()
-occupation_counts.columns = ['Occupation', 'Count']
-top_occupations = occupation_counts.head(10)
-
-if not top_occupations.empty:
-    fig_occ = px.bar(top_occupations, x='Count', y='Occupation', orientation='h',
-                     title="Top 10 Candidate Occupations", color='Occupation')
-    st.plotly_chart(fig_occ, use_container_width=True)
-else:
-    st.info("No occupation data available for selected filters.")
-
-st.divider()
+fig_share = px.area(party_share, x='Year', y='Vote Share %', color='Political_Affiliation', title="Party Vote Share Over Time")
+st.plotly_chart(fig_share, use_container_width=True)
 
 # -------------------------------
-# 🗺️ Provincial Vote Totals
+# Winning Margins
 # -------------------------------
-st.header("🗺️ Total Votes by Province")
+st.header("📏 Average Winning Margins")
 
-province_votes = filtered_df.groupby('Province_Territory')['Votes'].sum().reset_index()
-province_votes = province_votes[province_votes['Votes'] > 0]
+margins = df.groupby(['Year', 'Province_Territory', 'Constituency']).apply(
+    lambda x: x.sort_values('Votes', ascending=False).head(2)
+).reset_index(drop=True)
 
-if not province_votes.empty:
-    fig_province = px.bar(province_votes, x='Votes', y='Province_Territory', orientation='h',
-                          title="Total Votes by Province", color='Province_Territory')
-    st.plotly_chart(fig_province, use_container_width=True)
-else:
-    st.info("No provincial vote data available for selected filters.")
-
-st.divider()
+margin_calc = margins.groupby(['Year', 'Province_Territory', 'Constituency'])['Votes'].apply(lambda x: x.iloc[0] - x.iloc[1] if len(x) > 1 else 0).reset_index(name='Winning Margin')
+fig_margin = px.box(margin_calc, x='Year', y='Winning Margin', title="Distribution of Winning Margins")
+st.plotly_chart(fig_margin, use_container_width=True)
 
 # -------------------------------
-# 🎯 Outcome Distribution
+# Close Races
 # -------------------------------
-st.header("🎯 Election Outcomes")
+st.header("📌 Close Races (<5% Margin)")
 
-outcomes = filtered_df['Result'].value_counts().reset_index()
-outcomes.columns = ['Outcome', 'Count']
+close_races = df.groupby(['Year', 'Constituency']).apply(lambda x: x.sort_values('Votes', ascending=False).head(2)).reset_index(drop=True)
+close_races['Vote Diff'] = close_races.groupby(['Year', 'Constituency'])['Votes'].diff().abs()
+close_races['Total Votes'] = close_races.groupby(['Year', 'Constituency'])['Votes'].transform('sum')
+close_races['Margin %'] = (close_races['Vote Diff'] / close_races['Total Votes']) * 100
 
-if not outcomes.empty:
-    fig_outcome = px.pie(outcomes, names='Outcome', values='Count', hole=0.4,
-                         title="Distribution of Election Outcomes")
-    st.plotly_chart(fig_outcome, use_container_width=True)
-else:
-    st.info("No result data available for selected filters.")
+close_summary = close_races[(close_races['Margin %'] < 5) & (close_races['Margin %'].notna())]
+st.dataframe(close_summary[['Year', 'Constituency', 'Political_Affiliation', 'Votes', 'Margin %']].sort_values('Margin %'), use_container_width=True)
 
-st.divider()
+# -------------------------------
+# Spoiler Candidates
+# -------------------------------
+st.header("🔻 Spoiler Effect: Strong 3rd Place Candidates")
+
+spoilers = df.groupby(['Year', 'Constituency']).apply(lambda x: x.sort_values('Votes', ascending=False).head(3)).reset_index(drop=True)
+spoilers['Rank'] = spoilers.groupby(['Year', 'Constituency'])['Votes'].rank(ascending=False, method='first')
+thirds = spoilers[spoilers['Rank'] == 3]
+thirds = thirds[thirds['Votes'] > 0]
+
+fig_third = px.histogram(thirds, x='Votes', nbins=30, title="Votes Received by 3rd Place Candidates")
+st.plotly_chart(fig_third, use_container_width=True)
+
+# -------------------------------
+# Statistical Summary
+# -------------------------------
+st.header("📋 Statistical Summary Table")
+
+summary = df.groupby('Year').agg(
+    Total_Votes=('Votes', 'sum'),
+    Unique_Ridings=('Constituency', 'nunique'),
+    Parties=('Political_Affiliation', 'nunique'),
+    Avg_Candidates_Per_Riding=('Candidate', lambda x: round(len(x) / x.nunique(), 2))
+).reset_index()
+st.dataframe(summary, use_container_width=True)
+
+# -------------------------------
+# 🗓️ Temporal Election Patterns
+# -------------------------------
+st.header("🗓️ Temporal Election Patterns")
+
+month_party = df[df['Result'].str.contains("Elected", na=False)].groupby(['Month', 'Political_Affiliation']).size().reset_index(name='Wins')
+fig_month = px.bar(month_party, x='Month', y='Wins', color='Political_Affiliation', title="Wins by Party and Month")
+st.plotly_chart(fig_month, use_container_width=True)
+
+day_party = df[df['Result'].str.contains("Elected", na=False)].groupby(['Day', 'Political_Affiliation']).size().reset_index(name='Wins')
+fig_day = px.bar(day_party, x='Day', y='Wins', color='Political_Affiliation', title="Wins by Party and Day")
+st.plotly_chart(fig_day, use_container_width=True)
+
+weekday_party = df[df['Result'].str.contains("Elected", na=False)].groupby(['Weekday', 'Political_Affiliation']).size().reset_index(name='Wins')
+weekday_order = list(calendar.day_name)
+fig_weekday = px.bar(weekday_party, x='Weekday', y='Wins', color='Political_Affiliation', category_orders={'Weekday': weekday_order}, title="Wins by Party and Weekday")
+st.plotly_chart(fig_weekday, use_container_width=True)
+
+# -------------------------------
+# 🔁 Ridings with Consistent Party Wins
+# -------------------------------
+st.header("🔁 Ridings with Consistent Party Wins")
+winner_df = df[df['Result'].str.contains("Elected", na=False)]
+riding_dominance = winner_df.groupby(['Constituency', 'Political_Affiliation'])['Year'].nunique().reset_index(name='Win_Years')
+top_ridings = riding_dominance.sort_values(['Constituency', 'Win_Years'], ascending=[True, False])
+top_ridings = top_ridings.groupby('Constituency').head(1).sort_values('Win_Years', ascending=False).head(20)
+st.dataframe(top_ridings, use_container_width=True)
+
+# -------------------------------
+# 🗺️ Riding Lifespan
+# -------------------------------
+st.header("🗺️ Riding Lifespan Map")
+riding_years = df.groupby('Constituency')['Year'].agg(['min', 'max']).reset_index().rename(columns={'min': 'First Appearance', 'max': 'Last Appearance'})
+st.dataframe(riding_years.sort_values('First Appearance'), use_container_width=True)
+
+# -------------------------------
+# 👔 Occupation vs Vote Share
+# -------------------------------
+st.header("👔 Occupation Influence on Vote Share")
+
+# Calculate relative performance within each riding/year
+df['Total_Riding_Votes'] = df.groupby(['Year', 'Constituency'])['Votes'].transform('sum')
+df['Vote_Share'] = (df['Votes'] / df['Total_Riding_Votes']) * 100
+
+occ_vote_share = df.groupby('Occupation')['Vote_Share'].mean().reset_index().dropna().sort_values('Vote_Share', ascending=False).head(15)
+fig_occ_perf = px.bar(occ_vote_share, x='Vote_Share', y='Occupation', orientation='h', title="Avg Vote Share by Occupation")
+st.plotly_chart(fig_occ_perf, use_container_width=True)
+
+st.caption("All analyses above are filtered to the selected election type. Default is 'General'.")
 
 # -------------------------------
 # Footer
