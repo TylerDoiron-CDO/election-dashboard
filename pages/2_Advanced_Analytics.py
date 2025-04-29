@@ -34,12 +34,21 @@ df = load_data()
 st.title("📊 Advanced Electoral Analytics")
 st.caption("Deep-dive into Canada's federal election trends, party dynamics, and historical outcomes.")
 
-# Filter for Election Type
+# Filters
 available_types = sorted(df['Election_Type'].dropna().unique())
 default_type = 'General' if 'General' in available_types else available_types[0]
 selected_type = st.selectbox("Filter by Election Type:", available_types, index=available_types.index(default_type))
 
+available_parties = sorted(df['Political_Affiliation'].dropna().unique())
+selected_parties = st.multiselect("Filter by Political Party:", available_parties, default=available_parties)
+
+available_constituencies = sorted(df['Constituency'].dropna().unique())
+selected_constituencies = st.multiselect("Filter by Constituency:", available_constituencies, default=available_constituencies)
+
+# Apply filters
 df = df[df['Election_Type'] == selected_type]
+df = df[df['Political_Affiliation'].isin(selected_parties)]
+df = df[df['Constituency'].isin(selected_constituencies)]
 
 # -------------------------------
 # Turnout and Participation Over Time
