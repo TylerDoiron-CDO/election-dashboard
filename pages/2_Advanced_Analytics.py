@@ -40,10 +40,14 @@ default_type = 'General' if 'General' in available_types else available_types[0]
 selected_type = st.selectbox("Filter by Election Type:", available_types, index=available_types.index(default_type))
 
 available_parties = sorted(df['Political_Affiliation'].dropna().unique())
-selected_parties = st.multiselect("Filter by Political Party:", available_parties, default=available_parties)
+selected_parties = st.multiselect("Filter by Political Party:", available_parties)
+if not selected_parties:
+    selected_parties = available_parties
 
 available_constituencies = sorted(df['Constituency'].dropna().unique())
-selected_constituencies = st.multiselect("Filter by Constituency:", available_constituencies, default=available_constituencies)
+selected_constituencies = st.multiselect("Filter by Constituency:", available_constituencies)
+if not selected_constituencies:
+    selected_constituencies = available_constituencies
 
 # Apply filters
 df = df[df['Election_Type'] == selected_type]
