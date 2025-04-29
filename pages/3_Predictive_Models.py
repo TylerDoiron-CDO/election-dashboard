@@ -81,8 +81,24 @@ if not X_test.empty and not X_train.empty:
 
     st.subheader("Classification Report")
     st.text(classification_report(y_test_class, y_pred_class, zero_division=0))
+
+elif X_train.empty:
+    st.warning("🚨 Not enough training data after applying filters. Please broaden your filters.")
 else:
-    st.warning("🚨 No 2025 data available for prediction after filtering. Please adjust your filters.")
+    # No 2025 test data — fallback to last available year
+    last_year = X['Year'].max()
+    st.warning(f"⚠️ No 2025 data available after filtering. Predicting for {last_year} instead.")
+    
+    X_fallback = X[X['Year'] == last_year]
+    y_fallback = y_class[X['Year'] == last_year]
+    
+    y_pred_class = log_model.predict(X_fallback)
+    accuracy = accuracy_score(y_fallback, y_pred_class)
+
+    st.metric(label=f"Accuracy on {last_year} Data", value=f"{accuracy:.2%}")
+
+    st.subheader("Classification Report")
+    st.text(classification_report(y_fallback, y_pred_class, zero_division=0))
 
 # -------------------------------
 # Random Forest Model
