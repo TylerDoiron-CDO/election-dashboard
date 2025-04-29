@@ -4,74 +4,92 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# -------------------------------
-# Page Title
-# -------------------------------
-st.title("🧭 Political Spectrum")
-st.caption("Visualizing the ideological positioning of Canadian political parties across time.")
+st.title("🧭 Canadian Political Spectrum")
+st.caption("Visualizing ideological shifts of Canadian political parties from 2000 to present.")
 
 # -------------------------------
-# Define political positions over time
+# Manual ideological mapping (2000–2021)
+# Economic: -1 (socialist) to +1 (capitalist)
+# Social: -1 (libertarian) to +1 (authoritarian)
 # -------------------------------
 
-# This is a manually curated mapping — you can expand as needed
-party_positions = {
-    2011: [
-        {'Party': 'Conservative Party', 'Economic': 0.6, 'Social': 0.5, 'Color': 'blue'},
-        {'Party': 'Liberal Party',       'Economic': 0.2, 'Social': -0.3, 'Color': 'red'},
-        {'Party': 'New Democratic Party','Economic': -0.6,'Social': -0.6, 'Color': 'orange'},
-        {'Party': 'Green Party',         'Economic': -0.4,'Social': -0.4, 'Color': 'green'},
-        {'Party': 'Bloc Québécois',      'Economic': -0.3,'Social': -0.1, 'Color': 'darkgreen'},
-        {'Party': 'People\'s Party',     'Economic': 0.8, 'Social': 0.7, 'Color': 'purple'}
-    ],
-    # You can expand this with other years
-    2006: [
-        {'Party': 'Conservative Party', 'Economic': 0.5, 'Social': 0.4, 'Color': 'blue'},
-        {'Party': 'Liberal Party',       'Economic': 0.1, 'Social': -0.2, 'Color': 'red'},
-        {'Party': 'New Democratic Party','Economic': -0.5,'Social': -0.5, 'Color': 'orange'},
-        {'Party': 'Bloc Québécois',      'Economic': -0.3,'Social': -0.2, 'Color': 'darkgreen'}
-    ],
+party_history = []
+
+party_colors = {
+    'Liberal Party': 'red',
+    'Conservative Party': 'blue',
+    'New Democratic Party': 'orange',
+    'Green Party': 'green',
+    'Bloc Québécois': 'darkgreen',
+    'People\'s Party': 'purple'
 }
 
-# Available years
-available_years = sorted(party_positions.keys(), reverse=True)
+years = [2000, 2004, 2006, 2008, 2011, 2015, 2019, 2021]
+
+# Liberal Party
+liberal_coords = [(0.3, 0.2), (0.25, 0.1), (0.2, 0.0), (0.15, -0.1), (0.2, -0.3), (0.15, -0.4), (0.2, -0.35), (0.25, -0.3)]
+# Conservative Party
+con_coords = [(0.5, 0.4), (0.55, 0.45), (0.6, 0.5), (0.65, 0.55), (0.65, 0.6), (0.6, 0.6), (0.7, 0.6), (0.65, 0.55)]
+# NDP
+ndp_coords = [(-0.6, -0.6)] * len(years)
+# Green Party
+green_coords = [(-0.4, -0.4)] * len(years)
+# Bloc
+bloc_coords = [(-0.3, -0.1)] * len(years)
+# PPC (only from 2019)
+ppc_coords = [(0.85, 0.8), (0.85, 0.8)]
+
+for i, year in enumerate(years):
+    party_history.append({'Year': year, 'Party': 'Liberal Party', 'Economic': liberal_coords[i][0], 'Social': liberal_coords[i][1], 'Color': party_colors['Liberal Party']})
+    party_history.append({'Year': year, 'Party': 'Conservative Party', 'Economic': con_coords[i][0], 'Social': con_coords[i][1], 'Color': party_colors['Conservative Party']})
+    party_history.append({'Year': year, 'Party': 'New Democratic Party', 'Economic': ndp_coords[i][0], 'Social': ndp_coords[i][1], 'Color': party_colors['New Democratic Party']})
+    party_history.append({'Year': year, 'Party': 'Green Party', 'Economic': green_coords[i][0], 'Social': green_coords[i][1], 'Color': party_colors['Green Party']})
+    party_history.append({'Year': year, 'Party': 'Bloc Québécois', 'Economic': bloc_coords[i][0], 'Social': bloc_coords[i][1], 'Color': party_colors['Bloc Québécois']})
+    if year >= 2019:
+        party_history.append({'Year': year, 'Party': 'People\'s Party', 'Economic': ppc_coords[year - 2019][0], 'Social': ppc_coords[year - 2019][1], 'Color': party_colors['People\'s Party']})
+
+df = pd.DataFrame(party_history)
 
 # -------------------------------
-# Select Year
+# Year Selection
 # -------------------------------
-selected_year = st.selectbox("Select Election Year", available_years)
+selected_year = st.selectbox("Select Election Year", sorted(df['Year'].unique(), reverse=True))
 
-# Extract data for selected year
-data = pd.DataFrame(party_positions[selected_year])
+df_year = df[df['Year'] == selected_year]
 
 # -------------------------------
-# Plot
+# Spectrum Plot
 # -------------------------------
 fig = px.scatter(
-    data, x='Economic', y='Social', text='Party',
-    title=f"Political Spectrum – {selected_year}",
-    labels={'Economic': 'Economic: Left ↔ Right', 'Social': 'Social: Libertarian ↔ Authoritarian'},
-    color='Party', color_discrete_map={p['Party']: p['Color'] for p in data.to_dict('records')},
-    width=700, height=600
+    df_year,
+    x='Economic',
+    y='Social',
+    text='Party',
+    color='Party',
+    color_discrete_map=party_colors,
+    title=f"Canadian Political Spectrum – {selected_year}",
+    labels={'Economic': 'Left ← Economic → Right', 'Social': 'Libertarian ↑  |  ↓ Authoritarian'},
+    range_x=[-1, 1],
+    range_y=[-1, 1],
+    height=600
 )
 
-fig.update_traces(marker=dict(size=12), textposition='top center')
+fig.update_traces(marker=dict(size=14), textposition='top center')
 fig.update_layout(
-    xaxis=dict(range=[-1, 1], zeroline=True, zerolinewidth=2),
-    yaxis=dict(range=[-1, 1], zeroline=True, zerolinewidth=2),
+    xaxis=dict(showgrid=True, zeroline=True, zerolinewidth=2),
+    yaxis=dict(showgrid=True, zeroline=True, zerolinewidth=2),
     showlegend=False
 )
 
-# Display plot
 st.plotly_chart(fig, use_container_width=True)
 
 # -------------------------------
-# Party Position Table
+# Table of Positions
 # -------------------------------
-st.subheader("Party Positions in 2D Space")
-st.dataframe(data[['Party', 'Economic', 'Social']], use_container_width=True)
+st.subheader("Party Coordinates (for selected year)")
+st.dataframe(df_year[['Party', 'Economic', 'Social']], use_container_width=True)
 
 # -------------------------------
 # Footer
 # -------------------------------
-st.caption("Ideological positions are approximated based on public platforms and politicalcompass.org references. Subject to refinement.")
+st.caption("Party positions estimated using public platforms, historical policy analysis, and PoliticalCompass references. This model simplifies ideology and is meant for educational purposes.")
