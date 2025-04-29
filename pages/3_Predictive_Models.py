@@ -70,16 +70,19 @@ y_test_reg = y_reg[X['Year'] == 2025]
 # -------------------------------
 st.header("📈 Logistic Regression: Predict Win vs Loss")
 
-log_model = LogisticRegression(max_iter=1000)
-log_model.fit(X_train, y_train_class)
-y_pred_class = log_model.predict(X_test)
+if not X_test.empty and not X_train.empty:
+    log_model = LogisticRegression(max_iter=1000)
+    log_model.fit(X_train, y_train_class)
+    y_pred_class = log_model.predict(X_test)
 
-accuracy = accuracy_score(y_test_class, y_pred_class)
+    accuracy = accuracy_score(y_test_class, y_pred_class)
 
-st.metric(label="Accuracy on 2025 Data", value=f"{accuracy:.2%}")
+    st.metric(label="Accuracy on 2025 Data", value=f"{accuracy:.2%}")
 
-st.subheader("Classification Report")
-st.text(classification_report(y_test_class, y_pred_class, zero_division=0))
+    st.subheader("Classification Report")
+    st.text(classification_report(y_test_class, y_pred_class, zero_division=0))
+else:
+    st.warning("🚨 No 2025 data available for prediction after filtering. Please adjust your filters.")
 
 # -------------------------------
 # Random Forest Model
