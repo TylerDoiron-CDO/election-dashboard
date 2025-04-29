@@ -5,24 +5,69 @@ import pandas as pd
 import plotly.express as px
 
 # -------------------------------
-# Load the election data
+# Load Data
 # -------------------------------
 @st.cache_data
 def load_data():
-    return pd.read_csv('data/Election_Data.csv', encoding='latin1')
+    df = pd.read_csv('data/Election_Data.csv', encoding='latin1')
+    df.columns = df.columns.str.strip()
+
+    # Ensure Year, Month, Day are numeric
+    df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
+    df['Month'] = pd.to_numeric(df['Month'], errors='coerce')
+    df['Day'] = pd.to_numeric(df['Day'], errors='coerce')
+
+    # Build ParsedDate from Y/M/D
+    df['ParsedDate'] = pd.to_datetime(
+        dict(year=df['Year'], month=df['Month'], day=df['Day']),
+        errors='coerce'
+    )
+
+    df = df.dropna(subset=['ParsedDate'])
+    df['Year'] = df['ParsedDate'].dt.year.astype(int)
+    return df
 
 df = load_data()
-df['Year'] = pd.to_datetime(df['Date']).dt.year
 
 # -------------------------------
-# Header
+# Sidebar Filters
+# -------------------------------
+st.sidebar.header("🔍 Filter Overview")
+
+selected_provinces = st.sidebar.multiselect(
+    "Province/Territory",
+    options=sorted(df['Province_Territory'].dropna().unique())
+)
+
+selected_parties = st.sidebar.multiselect(
+    "Political Affiliation",
+    options=sorted(df['Political_Affiliation'].dropna().unique())
+)
+
+selected_years = st.sidebar.multiselect(
+    "Election Year",
+    options=sorted(df['Year'].dropna().unique())
+)
+
+# -------------------------------
+# Apply Filters
+# -------------------------------
+df_filtered = df.copy()
+if selected_provinces:
+    df_filtered = df_filtered[df_filtered['Province_Territory'].isin(selected_provinces)]
+if selected_parties:
+    df_filtered = df_filtered[df_filtered['Political_Affiliation'].isin(selected_parties)]
+if selected_years:
+    df_filtered = df_filtered[df_filtered['Year'].isin(selected_years)]
+
+# -------------------------------
+# Page Title & Description
 # -------------------------------
 st.title("🇨🇦 Canadian Election Dashboard")
 st.caption("A comprehensive look at Canada's federal election results — past, present, and predictive.")
-
 st.markdown("""
 Welcome to **Data Canada Votes**, a dynamic dashboard designed to explore Canada's electoral history.  
-Use the sidebar to filter elections by Province, Party, and Year, and navigate across different sections for deeper insights and predictions.
+Use the sidebar to filter elections by Province, Party, and Year.
 """)
 
 st.divider()
@@ -32,27 +77,10 @@ st.divider()
 # -------------------------------
 st.header("📊 Election Overview at a Glance")
 
-# Sidebar filters
-province = st.sidebar.multiselect("Filter by Province/Territory:", options=df['Province_Territory'].unique())
-party = st.sidebar.multiselect("Filter by Political Party:", options=df['Political_Affiliation'].unique())
-year = st.sidebar.multiselect("Filter by Election Year:", options=sorted(df['Year'].unique()))
-
-# Apply filters
-df_filtered = df.copy()
-
-if province:
-    df_filtered = df_filtered[df_filtered['Province_Territory'].isin(province)]
-if party:
-    df_filtered = df_filtered[df_filtered['Political_Affiliation'].isin(party)]
-if year:
-    df_filtered = df_filtered[df_filtered['Year'].isin(year)]
-
-# Metrics calculations
 total_votes = df_filtered['Votes'].sum()
 total_elections = df_filtered['Parliament'].nunique()
-top_party = df_filtered['Political_Affiliation'].value_counts().idxmax()
+top_party = df_filtered['Political_Affiliation'].value_counts().idxmax() if not df_filtered.empty else "N/A"
 
-# Metrics layout
 col1, col2, col3 = st.columns(3)
 col1.metric("🗳️ Total Votes Recorded", f"{total_votes:,}")
 col2.metric("🏛️ Parliaments Covered", total_elections)
@@ -64,28 +92,23 @@ st.divider()
 # Data Sample
 # -------------------------------
 st.header("📂 Sample of Election Data")
-
-st.markdown("Here's a quick look at the dataset behind the dashboard:")
-
-# Show small sample of the data
 st.dataframe(df_filtered.head(10), use_container_width=True)
-
-st.caption("Showing 10 rows. Full dataset available through dashboard filters.")
+st.caption("Showing 10 rows. Use filters to explore more.")
 
 st.divider()
 
 # -------------------------------
-# How to Use This Dashboard
+# Party Votes Chart
 # -------------------------------
-st.header("🧭 How to Explore the Dashboard")
+st.subheader("Votes by Political Party")
 
-st.markdown("""
-- **Advanced Analytics**: Discover historical voting trends, gender dynamics, and party evolutions.
-- **Predictive Models**: Forecast future election outcomes using real historical data.
-- **Geospatial Mapping (Coming Soon!)**: Visualize voting patterns by electoral districts.
-
-Use the sidebar to **filter by Province, Year, and Party** anytime.
-""")
+if not df_filtered.empty:
+    party_votes = df_filtered.groupby('Political_Affiliation')['Votes'].sum().reset_index()
+    fig_party = px.bar(party_votes, x='Political_Affiliation', y='Votes',
+                       title="Votes by Party", color='Political_Affiliation')
+    st.plotly_chart(fig_party, use_container_width=True)
+else:
+    st.info("No data available for the selected filters.")
 
 st.divider()
 
