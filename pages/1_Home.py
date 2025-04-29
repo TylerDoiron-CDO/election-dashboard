@@ -157,4 +157,96 @@ st.plotly_chart(fig_spectrum, use_container_width=True)
 st.caption("Note: Positioning based on general policy trends and public perception. Subject to refinement.")
 
 st.divider()
+
+# -------------------------------
+# 🧑‍💼 Most Common Occupations (Elected vs Not Elected)
+# -------------------------------
+st.header("💼 Top 10 Candidate Occupations")
+
+# Clean and categorize
+df_filtered['Result_Clean'] = df_filtered['Result'].fillna("Unknown").str.contains("Elected", case=False)
+
+# Group and count
+occ_counts = (
+    df_filtered.groupby(['Result_Clean', 'Occupation'])
+    .size()
+    .reset_index(name='Count')
+)
+
+# Get top 10 for each group
+top_occ = (
+    occ_counts.groupby('Result_Clean')
+    .apply(lambda x: x.sort_values('Count', ascending=False).head(10))
+    .reset_index(drop=True)
+)
+
+fig_occ = px.bar(
+    top_occ,
+    x='Count',
+    y='Occupation',
+    color='Result_Clean',
+    barmode='group',
+    orientation='h',
+    title="Top 10 Occupations: Elected vs Non-Elected Candidates",
+    labels={'Result_Clean': 'Elected?', 'Count': 'Number of Candidates'}
+)
+
+fig_occ.update_layout(yaxis=dict(categoryorder='total ascending'))
+st.plotly_chart(fig_occ, use_container_width=True)
+
+st.divider()
+
+# -------------------------------
+# 🔤 Most Common Candidate Names (First and Last)
+# -------------------------------
+st.header("🔤 Most Common Candidate Names")
+
+# First Names
+top_first = (
+    df_filtered['First_Name']
+    .dropna()
+    .str.title()
+    .value_counts()
+    .head(10)
+    .reset_index()
+    .rename(columns={'index': 'First Name', 'First_Name': 'Count'})
+)
+
+fig_first = px.bar(
+    top_first,
+    x='Count',
+    y='First Name',
+    orientation='h',
+    title="Top 10 First Names Among Candidates"
+)
+fig_first.update_layout(yaxis=dict(categoryorder='total ascending'))
+
+# Last Names
+top_last = (
+    df_filtered['Last_Name']
+    .dropna()
+    .str.title()
+    .value_counts()
+    .head(10)
+    .reset_index()
+    .rename(columns={'index': 'Last Name', 'Last_Name': 'Count'})
+)
+
+fig_last = px.bar(
+    top_last,
+    x='Count',
+    y='Last Name',
+    orientation='h',
+    title="Top 10 Last Names Among Candidates"
+)
+fig_last.update_layout(yaxis=dict(categoryorder='total ascending'))
+
+col1, col2 = st.columns(2)
+with col1:
+    st.plotly_chart(fig_first, use_container_width=True)
+with col2:
+    st.plotly_chart(fig_last, use_container_width=True)
+
+st.divider()
+
 st.caption("Built with ❤️ by Data Canada Votes | Powered by Streamlit")
