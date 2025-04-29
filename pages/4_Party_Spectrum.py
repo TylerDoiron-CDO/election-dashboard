@@ -93,33 +93,30 @@ fig_scatter.update_layout(
 st.plotly_chart(fig_scatter, use_container_width=True)
 
 # -------------------------------
-# Density Heatmap of All Years Combined
+# Matrix-Style Heatmaps (Like JPMorgan Chart)
 # -------------------------------
+st.subheader("🧮 Tabular Ideological Heatmaps")
 
-st.subheader("🔥 Historical Density Heatmap (All Parties, All Years)")
+pivot_econ = df.pivot(index='Party', columns='Year', values='Economic')
+pivot_soc = df.pivot(index='Party', columns='Year', values='Social')
 
-fig_heatmap = px.density_heatmap(
-    df,
-    x='Economic',
-    y='Social',
-    nbinsx=20,
-    nbinsy=20,
-    color_continuous_scale="RdBu_r",
-    range_x=[-1, 1],
-    range_y=[-1, 1],
-    title="Density of Party Platforms (2000–2025)",
-    labels={'Economic': 'Left ← Economic → Right', 'Social': 'Libertarian ↑ | ↓ Authoritarian'},
-    height=700
+st.markdown("#### 🟢 Economic Ideology (Left → Right)")
+
+st.dataframe(
+    pivot_econ.style.background_gradient(
+        cmap='RdYlGn', axis=1, vmin=-1, vmax=1
+    ).format("{:.2f}"),
+    use_container_width=True
 )
 
-fig_heatmap.update_layout(
-    xaxis=dict(showgrid=True, zeroline=True, zerolinewidth=2),
-    yaxis=dict(showgrid=True, zeroline=True, zerolinewidth=2),
-    coloraxis_colorbar=dict(title="Density"),
-    plot_bgcolor='white'
-)
+st.markdown("#### 🔵 Social Ideology (Libertarian → Authoritarian)")
 
-st.plotly_chart(fig_heatmap, use_container_width=True)
+st.dataframe(
+    pivot_soc.style.background_gradient(
+        cmap='RdYlGn', axis=1, vmin=-1, vmax=1
+    ).format("{:.2f}"),
+    use_container_width=True
+)
 
 # -------------------------------
 # Optional Table
