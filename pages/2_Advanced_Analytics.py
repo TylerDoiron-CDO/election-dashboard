@@ -9,25 +9,32 @@ import plotly.express as px
 # -------------------------------
 @st.cache_data
 def load_data():
-    df = pd.read_csv('data/Election_Data.csv', encoding='latin1')
-    df.columns = df.columns.str.strip()  # Clean column headers
+    import dateutil.parser
 
-    # Normalize dates: treat all as string first, then coerce
+    df = pd.read_csv('data/Election_Data.csv', encoding='latin1')
+    df.columns = df.columns.str.strip()  # Clean headers
+
+    # Strip whitespace and force all values to string for parsing
     df['Date'] = df['Date'].astype(str).str.strip()
 
-    # Convert to datetime safely (1900 and earlier allowed with errors='coerce')
-    df['ParsedDate'] = pd.to_datetime(df['Date'], errors='coerce', format='%Y-%m-%d')
+    # Custom date parsing function
+    def try_parse_date(date_str):
+        try:
+            parsed = dateutil.parser.parse(date_str, fuzzy=True)
+            return parsed
+        except:
+            return pd.NaT
 
-    # Extract year safely
+    # Apply custom parser
+    df['ParsedDate'] = df['Date'].apply(try_parse_date)
     df['Year'] = df['ParsedDate'].dt.year
 
-    # Drop rows without a valid year
+    # Drop rows where date parsing failed
     df = df.dropna(subset=['Year'])
     df['Year'] = df['Year'].astype(int)
 
     return df
-
-
+    
 df = load_data()
 
 # -------------------------------
