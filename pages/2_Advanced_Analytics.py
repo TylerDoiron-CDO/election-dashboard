@@ -10,11 +10,23 @@ import plotly.express as px
 @st.cache_data
 def load_data():
     df = pd.read_csv('data/Election_Data.csv', encoding='latin1')
-    df.columns = df.columns.str.strip()  # Remove whitespace from column names
-    df['Year'] = pd.to_datetime(df['Date'], errors='coerce').dt.year
+    df.columns = df.columns.str.strip()  # Clean column headers
+
+    # Normalize dates: treat all as string first, then coerce
+    df['Date'] = df['Date'].astype(str).str.strip()
+
+    # Convert to datetime safely (1900 and earlier allowed with errors='coerce')
+    df['ParsedDate'] = pd.to_datetime(df['Date'], errors='coerce', format='%Y-%m-%d')
+
+    # Extract year safely
+    df['Year'] = df['ParsedDate'].dt.year
+
+    # Drop rows without a valid year
     df = df.dropna(subset=['Year'])
     df['Year'] = df['Year'].astype(int)
+
     return df
+
 
 df = load_data()
 
