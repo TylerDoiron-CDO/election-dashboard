@@ -102,55 +102,6 @@ st.subheader("Party Coordinates")
 st.dataframe(df_year[['Party', 'Economic', 'Social']], use_container_width=True)
 
 # -------------------------------
-# Heatmap of Party Ideology Over Time
-# -------------------------------
-st.subheader("🔴 Ideological Density Over Time")
-
-# Economic heatmap
-st.markdown("#### Economic (Left–Right) Dispersion")
-
-heat_econ = df.copy()
-heat_econ['Economic_bin'] = pd.cut(heat_econ['Economic'], bins=20)
-econ_heatmap = heat_econ.groupby(['Year', 'Economic_bin']).size().reset_index(name='Count')
-econ_heatmap['Economic_bin_center'] = econ_heatmap['Economic_bin'].apply(lambda x: x.mid)
-
-fig_econ = px.density_heatmap(
-    econ_heatmap,
-    x='Year',
-    y='Economic_bin_center',
-    z='Count',
-    color_continuous_scale='RdBu_r',
-    nbinsy=20,
-    labels={'Economic_bin_center': 'Economic Position'},
-    height=300
-)
-
-fig_econ.update_layout(yaxis_title="Left (–1) → Right (+1)")
-st.plotly_chart(fig_econ, use_container_width=True)
-
-# Social heatmap
-st.markdown("#### Social (Libertarian–Authoritarian) Dispersion")
-
-heat_soc = df.copy()
-heat_soc['Social_bin'] = pd.cut(heat_soc['Social'], bins=20)
-soc_heatmap = heat_soc.groupby(['Year', 'Social_bin']).size().reset_index(name='Count')
-soc_heatmap['Social_bin_center'] = soc_heatmap['Social_bin'].apply(lambda x: x.mid)
-
-fig_soc = px.density_heatmap(
-    soc_heatmap,
-    x='Year',
-    y='Social_bin_center',
-    z='Count',
-    color_continuous_scale='PuBuGn',
-    nbinsy=20,
-    labels={'Social_bin_center': 'Social Position'},
-    height=300
-)
-
-fig_soc.update_layout(yaxis_title="Libertarian (–1) → Authoritarian (+1)")
-st.plotly_chart(fig_soc, use_container_width=True)
-
-# -------------------------------
 # Footer
 # -------------------------------
 st.caption("Ideological positioning is approximate and based on public platforms, historical policy, and politicalcompass-style references. Visualization for exploration purposes.")
