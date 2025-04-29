@@ -24,7 +24,6 @@ def load_data():
     df['Day'] = pd.to_numeric(df['Day'], errors='coerce')
     df['Date'] = pd.to_datetime(dict(year=df['Year'], month=df['Month'], day=df['Day']), errors='coerce')
 
-    # Clean up
     df = df.dropna(subset=['Year', 'Province_Territory', 'Election_Type', 'Parliament', 'Constituency', 'Votes'])
     df['Votes'] = pd.to_numeric(df['Votes'], errors='coerce').fillna(0).astype(int)
     return df
@@ -41,9 +40,10 @@ st.caption("Training predictive models to forecast election outcomes for 2025 ba
 # Data Preparation
 # -------------------------------
 
-# Features and Target
+# Define target
 df['Win'] = df['Result'].str.contains('Elected', case=False, na=False).astype(int)
 
+# Select features
 features = ['Province_Territory', 'Political_Affiliation', 'Gender', 'Occupation']
 df = df.dropna(subset=features)
 
@@ -52,12 +52,12 @@ encoder = LabelEncoder()
 for col in features:
     df[col] = encoder.fit_transform(df[col].astype(str))
 
-# Add Year
+# Prepare data
 X = df[['Year'] + features]
 y_class = df['Win']
 y_reg = df['Votes']
 
-# Train on 2000–2021
+# Train on data before 2025
 X_train = X[X['Year'] < 2025]
 X_test = X[X['Year'] == 2025]
 y_train_class = y_class[X['Year'] < 2025]
@@ -76,7 +76,7 @@ y_pred_class = log_model.predict(X_test)
 
 accuracy = accuracy_score(y_test_class, y_pred_class)
 
-st.metric(label="Accuracy (2025)", value=f"{accuracy:.2%}")
+st.metric(label="Accuracy on 2025 Data", value=f"{accuracy:.2%}")
 
 st.subheader("Classification Report")
 st.text(classification_report(y_test_class, y_pred_class, zero_division=0))
@@ -91,17 +91,22 @@ rf_model.fit(X_train, y_train_reg)
 y_pred_reg = rf_model.predict(X_test)
 
 r2 = r2_score(y_test_reg, y_pred_reg)
-st.metric(label="R² Score (2025)", value=f"{r2:.2f}")
+st.metric(label="R² Score on 2025 Data", value=f"{r2:.2f}")
 
 # Feature Importances
 importance = pd.DataFrame({'Feature': X_train.columns, 'Importance': rf_model.feature_importances_})
-fig_importance = px.bar(importance.sort_values('Importance', ascending=False), x='Importance', y='Feature', orientation='h', title="Feature Importance (Random Forest)")
+fig_importance = px.bar(
+    importance.sort_values('Importance', ascending=True),
+    x='Importance', y='Feature',
+    orientation='h',
+    title="Feature Importance (Random Forest)"
+)
 st.plotly_chart(fig_importance, use_container_width=True)
 
 # -------------------------------
 # Predicted vs Actual for 2025
 # -------------------------------
-st.header("🔍 Predicted vs Actual Outcomes (2025)")
+st.header("🔍 Predicted vs Actual Results (2025)")
 
 comparison = pd.DataFrame({
     'Actual Win': y_test_class.values,
@@ -113,11 +118,13 @@ comparison = pd.DataFrame({
 st.dataframe(comparison, use_container_width=True)
 
 # -------------------------------
-# 🚀 Coming Soon Banner
+# 🚀 Future Enhancements
 # -------------------------------
-st.header("🚀 Coming Soon: Advanced Models")
-st.info(\"\"\"\n
-- XGBoost classification and regression
-- ARIMA time-series modeling for vote forecasting
-- Demographic and geographic data integration
-\"\"\")
+st.header("🚀 Coming Soon: Advanced Predictive Models")
+
+st.info(
+    "- XGBoost Classification and Regression\n"
+    "- ARIMA Time-Series Forecasting\n"
+    "- Integration with Demographic and Geographic Datasets\n"
+    "- More advanced machine learning pipelines"
+)
