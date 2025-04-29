@@ -12,26 +12,26 @@ def load_data():
     import dateutil.parser
 
     df = pd.read_csv('data/Election_Data.csv', encoding='latin1')
-    df.columns = df.columns.str.strip()  # Clean headers
+    df.columns = df.columns.str.strip()
 
-    # Strip whitespace and force all values to string for parsing
+    # Force Date to string
     df['Date'] = df['Date'].astype(str).str.strip()
 
-    # Custom date parsing function
-    def try_parse_date(date_str):
+    # Try parsing with dateutil
+    def try_parse_date(d):
         try:
-            parsed = dateutil.parser.parse(date_str, fuzzy=True)
-            return parsed
+            return dateutil.parser.parse(d, fuzzy=True)
         except:
-            return pd.NaT
+            return None
 
-    # Apply custom parser
     df['ParsedDate'] = df['Date'].apply(try_parse_date)
-    df['Year'] = df['ParsedDate'].dt.year
 
-    # Drop rows where date parsing failed
-    df = df.dropna(subset=['Year'])
-    df['Year'] = df['Year'].astype(int)
+    # ✅ Force it into datetime dtype
+    df['ParsedDate'] = pd.to_datetime(df['ParsedDate'], errors='coerce')
+
+    # Extract year from clean datetime
+    df = df.dropna(subset=['ParsedDate'])
+    df['Year'] = df['ParsedDate'].dt.year.astype(int)
 
     return df
     
