@@ -9,31 +9,28 @@ import plotly.express as px
 # -------------------------------
 @st.cache_data
 def load_data():
-    import dateutil.parser
+    import pandas as pd
 
     df = pd.read_csv('data/Election_Data.csv', encoding='latin1')
     df.columns = df.columns.str.strip()
 
-    # Force Date to string
-    df['Date'] = df['Date'].astype(str).str.strip()
+    # Ensure Year, Month, Day are numeric
+    df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
+    df['Month'] = pd.to_numeric(df['Month'], errors='coerce')
+    df['Day'] = pd.to_numeric(df['Day'], errors='coerce')
 
-    # Try parsing with dateutil
-    def try_parse_date(d):
-        try:
-            return dateutil.parser.parse(d, fuzzy=True)
-        except:
-            return None
+    # Create ParsedDate from components
+    df['ParsedDate'] = pd.to_datetime(
+        dict(year=df['Year'], month=df['Month'], day=df['Day']),
+        errors='coerce'
+    )
 
-    df['ParsedDate'] = df['Date'].apply(try_parse_date)
-
-    # ✅ Force it into datetime dtype
-    df['ParsedDate'] = pd.to_datetime(df['ParsedDate'], errors='coerce')
-
-    # Extract year from clean datetime
+    # Drop rows with invalid or missing dates
     df = df.dropna(subset=['ParsedDate'])
     df['Year'] = df['ParsedDate'].dt.year.astype(int)
 
     return df
+
     
 df = load_data()
 
