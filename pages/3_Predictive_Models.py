@@ -85,20 +85,29 @@ if not X_test.empty and not X_train.empty:
 elif X_train.empty:
     st.warning("🚨 Not enough training data after applying filters. Please broaden your filters.")
 else:
-    # No 2025 test data — fallback to last available year
+    # No 2025 data — fallback to last year
     last_year = X['Year'].max()
     st.warning(f"⚠️ No 2025 data available after filtering. Predicting for {last_year} instead.")
-    
+
+    # Fallback dataset
     X_fallback = X[X['Year'] == last_year]
     y_fallback = y_class[X['Year'] == last_year]
-    
-    y_pred_class = log_model.predict(X_fallback)
-    accuracy = accuracy_score(y_fallback, y_pred_class)
+
+    # Split fallback set into train/test
+    X_fallback_train, X_fallback_test, y_fallback_train, y_fallback_test = train_test_split(
+        X_fallback, y_fallback, test_size=0.3, random_state=42
+    )
+
+    log_model = LogisticRegression(max_iter=1000)
+    log_model.fit(X_fallback_train, y_fallback_train)
+    y_pred_fallback = log_model.predict(X_fallback_test)
+
+    accuracy = accuracy_score(y_fallback_test, y_pred_fallback)
 
     st.metric(label=f"Accuracy on {last_year} Data", value=f"{accuracy:.2%}")
 
     st.subheader("Classification Report")
-    st.text(classification_report(y_fallback, y_pred_class, zero_division=0))
+    st.text(classification_report(y_fallback_test, y_pred_fallback, zero_division=0))
 
 # -------------------------------
 # Random Forest Model
