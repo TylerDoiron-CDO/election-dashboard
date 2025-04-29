@@ -202,18 +202,18 @@ st.divider()
 st.header("🔤 Most Common Candidate Names")
 
 # First Names
-top_first = (
+first_names = (
     df_filtered['First_Name']
     .dropna()
     .str.title()
     .value_counts()
     .head(10)
     .reset_index()
-    .rename(columns={'index': 'First Name', 'First_Name': 'Count'})
 )
+first_names.columns = ['First Name', 'Count']
 
 fig_first = px.bar(
-    top_first,
+    first_names,
     x='Count',
     y='First Name',
     orientation='h',
@@ -222,18 +222,18 @@ fig_first = px.bar(
 fig_first.update_layout(yaxis=dict(categoryorder='total ascending'))
 
 # Last Names
-top_last = (
+last_names = (
     df_filtered['Last_Name']
     .dropna()
     .str.title()
     .value_counts()
     .head(10)
     .reset_index()
-    .rename(columns={'index': 'Last Name', 'Last_Name': 'Count'})
 )
+last_names.columns = ['Last Name', 'Count']
 
 fig_last = px.bar(
-    top_last,
+    last_names,
     x='Count',
     y='Last Name',
     orientation='h',
@@ -241,6 +241,7 @@ fig_last = px.bar(
 )
 fig_last.update_layout(yaxis=dict(categoryorder='total ascending'))
 
+# Display side-by-side
 col1, col2 = st.columns(2)
 with col1:
     st.plotly_chart(fig_first, use_container_width=True)
@@ -248,5 +249,6 @@ with col2:
     st.plotly_chart(fig_last, use_container_width=True)
 
 st.divider()
+
 
 st.caption("Built with ❤️ by Data Canada Votes | Powered by Streamlit")
