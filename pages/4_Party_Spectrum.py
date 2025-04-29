@@ -4,13 +4,11 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.title("🧭 Canadian Political Spectrum")
-st.caption("Visualizing ideological shifts of Canadian political parties from 2000 to 2025.")
+st.title("🧭 Canadian Political Spectrum (2000–2025)")
+st.caption("Explore the ideological positioning and historical dispersion of Canadian political parties.")
 
 # -------------------------------
-# Define ideological coordinates per party per year
-# Economic: -1 (socialist) to +1 (capitalist)
-# Social: -1 (libertarian) to +1 (authoritarian)
+# Define ideological coordinates manually (2000–2025)
 # -------------------------------
 
 years = [2000, 2004, 2006, 2008, 2011, 2015, 2019, 2021, 2025]
@@ -30,13 +28,13 @@ party_history = []
 liberal_coords = [(0.3, 0.2), (0.25, 0.1), (0.2, 0.0), (0.15, -0.1), (0.2, -0.3), (0.15, -0.4), (0.2, -0.35), (0.25, -0.3), (0.2, -0.25)]
 # Conservative Party
 con_coords = [(0.5, 0.4), (0.55, 0.45), (0.6, 0.5), (0.65, 0.55), (0.65, 0.6), (0.6, 0.6), (0.7, 0.6), (0.65, 0.55), (0.6, 0.5)]
-# NDP – stable progressive left
+# NDP
 ndp_coords = [(-0.6, -0.6)] * len(years)
-# Green – stable eco-left
+# Green Party
 green_coords = [(-0.4, -0.4)] * len(years)
-# Bloc – moderate centre-left
+# Bloc
 bloc_coords = [(-0.3, -0.1)] * len(years)
-# PPC – only from 2019
+# PPC (only from 2019)
 ppc_years = [2019, 2021, 2025]
 ppc_coords = [(0.85, 0.8), (0.85, 0.8), (0.85, 0.8)]
 
@@ -46,7 +44,6 @@ for i, year in enumerate(years):
     party_history.append({'Year': year, 'Party': 'New Democratic Party', 'Economic': ndp_coords[i][0], 'Social': ndp_coords[i][1], 'Color': party_colors['New Democratic Party']})
     party_history.append({'Year': year, 'Party': 'Green Party', 'Economic': green_coords[i][0], 'Social': green_coords[i][1], 'Color': party_colors['Green Party']})
     party_history.append({'Year': year, 'Party': 'Bloc Québécois', 'Economic': bloc_coords[i][0], 'Social': bloc_coords[i][1], 'Color': party_colors['Bloc Québécois']})
-
     if year in ppc_years:
         j = ppc_years.index(year)
         party_history.append({
@@ -60,16 +57,16 @@ for i, year in enumerate(years):
 df = pd.DataFrame(party_history)
 
 # -------------------------------
-# Year selector
+# Party Spectrum Scatter Plot (Year Selector)
 # -------------------------------
+
+st.subheader("🟢 Political Spectrum – Party Positions by Year")
+
 selected_year = st.selectbox("Select Election Year", sorted(df['Year'].unique(), reverse=True))
 
 df_year = df[df['Year'] == selected_year]
 
-# -------------------------------
-# 2D Quadrant Plot
-# -------------------------------
-fig = px.scatter(
+fig_scatter = px.scatter(
     df_year,
     x='Economic',
     y='Social',
@@ -86,22 +83,51 @@ fig = px.scatter(
     height=600
 )
 
-fig.update_traces(marker=dict(size=14), textposition='top center')
-fig.update_layout(
+fig_scatter.update_traces(marker=dict(size=14), textposition='top center')
+fig_scatter.update_layout(
     xaxis=dict(showgrid=True, zeroline=True, zerolinewidth=2),
     yaxis=dict(showgrid=True, zeroline=True, zerolinewidth=2),
     showlegend=False
 )
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig_scatter, use_container_width=True)
 
 # -------------------------------
-# Party Position Table
+# Density Heatmap of All Years Combined
 # -------------------------------
-st.subheader("Party Coordinates")
-st.dataframe(df_year[['Party', 'Economic', 'Social']], use_container_width=True)
+
+st.subheader("🔥 Historical Density Heatmap (All Parties, All Years)")
+
+fig_heatmap = px.density_heatmap(
+    df,
+    x='Economic',
+    y='Social',
+    nbinsx=20,
+    nbinsy=20,
+    color_continuous_scale="RdBu_r",
+    range_x=[-1, 1],
+    range_y=[-1, 1],
+    title="Density of Party Platforms (2000–2025)",
+    labels={'Economic': 'Left ← Economic → Right', 'Social': 'Libertarian ↑ | ↓ Authoritarian'},
+    height=700
+)
+
+fig_heatmap.update_layout(
+    xaxis=dict(showgrid=True, zeroline=True, zerolinewidth=2),
+    yaxis=dict(showgrid=True, zeroline=True, zerolinewidth=2),
+    coloraxis_colorbar=dict(title="Density"),
+    plot_bgcolor='white'
+)
+
+st.plotly_chart(fig_heatmap, use_container_width=True)
+
+# -------------------------------
+# Optional Table
+# -------------------------------
+with st.expander("See Raw Party Data"):
+    st.dataframe(df[['Year', 'Party', 'Economic', 'Social']], use_container_width=True)
 
 # -------------------------------
 # Footer
 # -------------------------------
-st.caption("Ideological positioning is approximate and based on public platforms, historical policy, and politicalcompass-style references. Visualization for exploration purposes.")
+st.caption("Ideological positions are estimates based on public platforms and PoliticalCompass-style references. Visuals designed for exploration and analysis.")
